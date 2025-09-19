@@ -31,7 +31,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const locale = useI18n();
 const { debounce } = useDebounce();
-const { isCtrlKeyPressed } = useDeviceSupport();
+const { isCtrlKeyPressed, controlKeyText } = useDeviceSupport();
 
 const popOutWindow = inject(PopOutWindowKey, undefined);
 const keyboardEventTarget = computed(() => popOutWindow?.value?.document ?? window.document);
@@ -41,6 +41,12 @@ const inputRef = ref<HTMLInputElement | null>(null);
 const search = ref(props.modelValue ?? '');
 const opened = ref(!!search.value);
 const placeholder = computed(() => {
+	if (props.shortcut === 'ctrl+f') {
+		return locale.baseText('ndv.search.placeholder.shortcutHint', {
+			interpolate: { shortcut: `${controlKeyText.value}+F` },
+		});
+	}
+
 	if (props.paneType === 'output') {
 		return locale.baseText('ndv.search.placeholder.output');
 	}
