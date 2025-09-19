@@ -2,7 +2,6 @@
 import InputPanel from '@/components/InputPanel.vue';
 import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useCanvasStore } from '@/stores/canvas.store';
 import { onBeforeUnmount, ref, watch } from 'vue';
 import type { Workflow } from 'n8n-workflow';
 import { computed, useTemplateRef } from 'vue';
@@ -14,6 +13,7 @@ import {
 	type UseElementHoverOptions,
 	useEventListener,
 } from '@vueuse/core';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 type MapperState = { isOpen: true; closeOnMouseLeave: boolean } | { isOpen: false };
 
@@ -37,7 +37,8 @@ const {
 const state = ref<MapperState>({ isOpen: false });
 const contentRef = useTemplateRef('content');
 const ndvStore = useNDVStore();
-const canvasStore = useCanvasStore();
+const experimentalNdvStore = useExperimentalNdvStore();
+
 const contentElRef = computed(() => contentRef.value?.$el ?? null);
 const { APP_Z_INDEXES } = useStyles();
 const isReferenceHovered = useElementHover(visibleOnHover ? reference : null, hoverOptions);
@@ -45,7 +46,9 @@ const isMapperHovered = useElementHover(visibleOnHover ? contentElRef : null, ho
 const isHovered = computed(() => isReferenceHovered.value || isMapperHovered.value);
 
 function handleFocusIn() {
-	state.value = { isOpen: true, closeOnMouseLeave: false };
+	if (!experimentalNdvStore.isMapperOpen) {
+		state.value = { isOpen: true, closeOnMouseLeave: false };
+	}
 }
 
 function handleReferenceFocusOut(event: FocusEvent | MouseEvent) {
@@ -59,7 +62,11 @@ function handleReferenceFocusOut(event: FocusEvent | MouseEvent) {
 }
 
 watch(isHovered, (hovered) => {
-	if (!visibleOnHover || (state.value.isOpen && !state.value.closeOnMouseLeave)) {
+	if (
+		!visibleOnHover ||
+		(state.value.isOpen && !state.value.closeOnMouseLeave) ||
+		experimentalNdvStore.isMapperOpen
+	) {
 		return;
 	}
 
@@ -69,13 +76,21 @@ watch(isHovered, (hovered) => {
 watch(
 	state,
 	(value) => {
-		canvasStore.setSuppressInteraction(value.isOpen && !value.closeOnMouseLeave);
+		if (value.isOpen) {
+			if (value.closeOnMouseLeave) {
+				return; // Skip sync if the mapper is "ephemeral"
+			}
+
+			experimentalNdvStore.setMapperOpen(true);
+		} else {
+			experimentalNdvStore.setMapperOpen(false);
+		}
 	},
 	{ immediate: true },
 );
 
 onBeforeUnmount(() => {
-	canvasStore.setSuppressInteraction(false);
+	experimentalNdvStore.setMapperOpen(false);
 });
 
 useEventListener(reference, 'focusin', handleFocusIn);
@@ -114,6 +129,7 @@ onClickOutside(contentElRef, handleReferenceFocusOut);
 				:focused-mappable-input="ndvStore.focusedMappableInput"
 				node-not-run-message-variant="simple"
 				:truncate-limit="60"
+				search-shortcut="ctrl+f"
 			/>
 		</template>
 	</N8nPopoverReka>
