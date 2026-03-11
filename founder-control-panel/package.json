@@ -1,0 +1,16 @@
+{
+  "name": "founder-control-panel",
+  "private": true,
+  "version": "0.2.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
+    "test": "node --test apps/api/tests/*.test.js",
+    "build": "npm run typecheck && npm run test",
+    "seed:demo": "psql \"$DATABASE_URL\" -f prisma/demo-seed.sql"
+  },
+  "type": "module"
+}

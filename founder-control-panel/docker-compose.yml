@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: founder_control_panel
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+
+  api:
+    image: node:20
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      PORT: 5001
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/founder_control_panel
+      JWT_SECRET: change-me-strong
+    volumes:
+      - ./apps/api:/app
+    ports:
+      - "5001:5001"
+    depends_on:
+      - db
+
+  worker:
+    image: node:20
+    working_dir: /app
+    command: sh -c "npm install && node src/worker.ts"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/founder_control_panel
+    volumes:
+      - ./apps/worker:/app
+    depends_on:
+      - db
+
+  web:
+    image: node:20
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    volumes:
+      - ./apps/web:/app
+    ports:
+      - "3001:3001"
+    depends_on:
+      - api
